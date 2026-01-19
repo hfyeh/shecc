@@ -110,6 +110,13 @@ ph2_ir_t *bb_add_ph2_ir(basic_block_t *bb, opcode_t op)
 /* Calculate the cost of spilling a variable from a register.
  * Higher cost means the variable is more valuable to keep in a register.
  * The cost is computed based on multiple factors that affect performance.
+ *
+ * Factors:
+ * - Liveness (is it live-out?)
+ * - Proximity of next use
+ * - Frequency of use
+ * - Loop depth
+ * - Variable type (constant vs variable)
  */
 int calculate_spill_cost(var_t *var, basic_block_t *bb, int current_idx)
 {
@@ -160,6 +167,16 @@ int calculate_spill_cost(var_t *var, basic_block_t *bb, int current_idx)
     return cost;
 }
 
+/* Find the best candidate register to spill.
+ * Used when no free registers are available.
+ *
+ * @bb: Current basic block.
+ * @current_idx: Current instruction index.
+ * @avoid_reg1: Register index to exclude from selection (e.g. source operand).
+ * @avoid_reg2: Another register index to exclude.
+ *
+ * Return: The index of the register to spill.
+ */
 int find_best_spill(basic_block_t *bb,
                     int current_idx,
                     int avoid_reg1,
@@ -186,9 +203,11 @@ int find_best_spill(basic_block_t *bb,
     return best_reg;
 }
 
-/* Priority of spilling:
- * - live_out variable
- * - farthest local variable
+/* Spill a variable from a register to memory (stack or global).
+ *
+ * @bb: Current basic block.
+ * @var: Variable to spill.
+ * @idx: Register index currently holding the variable.
  */
 void spill_var(basic_block_t *bb, var_t *var, int idx)
 {
@@ -213,7 +232,9 @@ void spill_var(basic_block_t *bb, var_t *var, int idx)
     vreg_clear_phys(var);
 }
 
-/* Return the index of register for given variable. Otherwise, return -1. */
+/* Find which physical register currently holds the given variable.
+ * Return: Register index (0-7), or -1 if not in any register.
+ */
 int find_in_regs(var_t *var)
 {
     for (int i = 0; i < REG_CNT; i++) {
@@ -223,6 +244,13 @@ int find_in_regs(var_t *var)
     return -1;
 }
 
+/* Load a variable into a specific physical register.
+ * Generates load instructions (from stack, global memory, or constant).
+ *
+ * @bb: Current basic block.
+ * @var: Variable to load.
+ * @idx: Target register index.
+ */
 void load_var(basic_block_t *bb, var_t *var, int idx)
 {
     ph2_ir_t *ir;
@@ -244,6 +272,15 @@ void load_var(basic_block_t *bb, var_t *var, int idx)
     vreg_map_to_phys(var, idx);
 }
 
+/* Ensure a variable is loaded into a register for use as an operand.
+ * If not already in a register, allocates one (potentially spilling) and loads it.
+ *
+ * @bb: Current basic block.
+ * @var: Variable to prepare.
+ * @operand_0: Register index of the first operand (to avoid spilling it).
+ *
+ * Return: The register index holding the variable.
+ */
 int prepare_operand(basic_block_t *bb, var_t *var, int operand_0)
 {
     /* Check VReg mapping first for O(1) lookup */
@@ -288,6 +325,16 @@ int prepare_operand(basic_block_t *bb, var_t *var, int operand_0)
     return spilled;
 }
 
+/* Prepare a register to be used as a destination for an operation.
+ * Allocates a register (potentially spilling) and marks it as polluted.
+ *
+ * @bb: Current basic block.
+ * @var: Destination variable.
+ * @operand_0: Register index of source operand 1 (to avoid spilling).
+ * @operand_1: Register index of source operand 2 (to avoid spilling).
+ *
+ * Return: The allocated register index.
+ */
 int prepare_dest(basic_block_t *bb, var_t *var, int operand_0, int operand_1)
 {
     int phys_reg = vreg_get_phys(var);
@@ -419,6 +466,11 @@ bool abi_lower_call_args(basic_block_t *bb, insn_t *insn)
     return true;
 }
 
+/* Main Register Allocation Function
+ * Implements a linear scan-like register allocation strategy.
+ * Iterates through instructions and manages the mapping between variables
+ * and physical registers. Handles spilling, loading, and register reuse.
+ */
 void reg_alloc(void)
 {
     /* TODO: Add proper .bss and .data section support for uninitialized /

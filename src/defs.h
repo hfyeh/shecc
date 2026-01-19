@@ -10,7 +10,11 @@
 
 /* definitions */
 
-/* Limitations */
+/* Limitations
+ * These constants define the fixed-size buffers used throughout the compiler.
+ * Since shecc is designed to be simple and self-hosting, it often uses static
+ * arrays instead of dynamic memory allocation for simplicity.
+ */
 #define MAX_TOKEN_LEN 256
 #define MAX_ID_LEN 64
 #define MAX_LINE_LEN 256
@@ -114,7 +118,10 @@ typedef struct {
     int block_size;  /* Default block size for new blocks */
 } arena_t;
 
-/* string-based hash map definitions */
+/* string-based hash map definitions
+ * Used for symbol tables, string pools, etc.
+ * Implements a simple open addressing hash map.
+ */
 
 typedef struct hashmap_node {
     char *key;
@@ -128,7 +135,9 @@ typedef struct {
     hashmap_node_t *table;
 } hashmap_t;
 
-/* lexer tokens */
+/* lexer tokens
+ * Represents the different types of tokens identified by the lexical analyzer.
+ */
 typedef enum {
     T_start, /* FIXME: Unused, intended for lexer state machine init */
     T_numeric,
@@ -254,7 +263,9 @@ typedef struct {
     hashmap_t *literals; /* Map string literal -> ELF data offset */
 } string_literal_pool_t;
 
-/* builtin types */
+/* builtin types
+ * Fundamental data types supported by the compiler.
+ */
 typedef enum {
     TYPE_void = 0,
     TYPE_int,
@@ -265,7 +276,10 @@ typedef enum {
     TYPE_typedef
 } base_type_t;
 
-/* IR opcode */
+/* IR opcode
+ * Opcodes for the Intermediate Representation (IR).
+ * The IR is a linear sequence of instructions in Static Single Assignment (SSA) form.
+ */
 typedef enum {
     /* intermediate use in front-end. No code generation */
     OP_generic,
@@ -340,7 +354,10 @@ typedef enum {
     OP_start
 } opcode_t;
 
-/* variable definition */
+/* variable definition
+ * Represents a variable in the symbol table.
+ * Includes information about type, storage, SSA versioning, and register allocation.
+ */
 typedef struct {
     int counter;
     int stack[64];
@@ -431,6 +448,10 @@ typedef struct {
 typedef struct func func_t;
 
 /* block definition */
+/* Block structure for scoping.
+ * Represents a lexical scope (e.g., a function body, a compound statement).
+ * Tracks local variables defined in this scope.
+ */
 struct block {
     var_list_t locals;
     struct block *parent;
@@ -453,7 +474,10 @@ typedef struct {
     char *elements;
 } strbuf_t;
 
-/* phase-2 IR definition */
+/* phase-2 IR definition
+ * A lower-level IR used during code generation.
+ * Maps more directly to machine instructions than the SSA IR.
+ */
 struct ph2_ir {
     opcode_t op;
     int src0;
@@ -479,7 +503,9 @@ struct ph2_ir {
 
 typedef struct ph2_ir ph2_ir_t;
 
-/* type definition */
+/* type definition
+ * Represents a C data type (built-in, struct, union, or typedef).
+ */
 struct type {
     char type_name[MAX_TYPE_LEN];
     base_type_t base_type;
@@ -490,7 +516,9 @@ struct type {
     int ptr_level; /* pointer level for typedef pointer types */
 };
 
-/* lvalue details */
+/* lvalue details
+ * Helper structure to return type information from expression parsing.
+ */
 typedef struct {
     int size;
     int ptr_level;
@@ -520,13 +548,17 @@ struct phi_operand {
 
 typedef struct phi_operand phi_operand_t;
 
+/* SSA Instruction
+ * Represents a single operation in the SSA IR.
+ * Format: rd = opcode rs1, rs2
+ */
 struct insn {
     struct insn *next, *prev;
     int idx;
     opcode_t opcode;
-    var_t *rd;
-    var_t *rs1;
-    var_t *rs2;
+    var_t *rd;      /* Destination variable */
+    var_t *rs1;     /* Source operand 1 */
+    var_t *rs2;     /* Source operand 2 */
     int sz;
     bool useful; /* Used in DCE process. Set true if instruction is useful. */
     basic_block_t *belong_to;
@@ -561,6 +593,10 @@ typedef struct {
     symbol_t *head, *tail;
 } symbol_list_t;
 
+/* Basic Block (BB)
+ * A sequence of instructions with a single entry and single exit.
+ * Used for building the Control Flow Graph (CFG) and SSA form.
+ */
 struct basic_block {
     insn_list_t insn_list;
     ph2_ir_list_t ph2_ir_list;
@@ -612,6 +648,10 @@ typedef struct {
     bool used;
 } label_t;
 
+/* Function definition
+ * Contains metadata about a function, including its signature, stack usage,
+ * and the list of basic blocks (CFG) that make up its body.
+ */
 struct func {
     /* Syntatic info */
     var_t return_def;

@@ -56,7 +56,9 @@ void riscv_lower(void)
     }
 }
 
-/* Entry point: dispatch to the active architecture. */
+/* Entry point: dispatch to the active architecture.
+ * Lowers IR constructs that are specific to the target architecture.
+ */
 void arch_lower(void)
 {
 #if ELF_MACHINE == 0x28 /* ARM */

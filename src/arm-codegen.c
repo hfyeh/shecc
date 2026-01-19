@@ -5,12 +5,25 @@
  * file "LICENSE" for information on usage and redistribution of this file.
  */
 
-/* Translate IR to target machine code */
+/* Translate IR to target machine code (ARM Backend)
+ *
+ * This file handles the translation of the second-phase IR (ph2_ir) into
+ * actual ARMv7 machine code.
+ *
+ * Key functions:
+ * - update_elf_offset: Calculates instruction sizes for jump offsets.
+ * - cfg_flatten: Flattens the CFG into a linear sequence of instructions.
+ * - emit_ph2_ir: Generates ARM instructions for each IR instruction.
+ * - code_generate: Main entry point for code generation.
+ */
 
 #include "arm.c"
 #include "defs.h"
 #include "globals.c"
 
+/* Update the ELF offset counter based on the instruction type.
+ * This is crucial for calculating branch targets and function call offsets.
+ */
 void update_elf_offset(ph2_ir_t *ph2_ir)
 {
     func_t *func;
@@ -156,6 +169,9 @@ void update_elf_offset(ph2_ir_t *ph2_ir)
     }
 }
 
+/* Flatten the Control Flow Graph (CFG) into a linear instruction stream.
+ * Allocates stack space, calculates offsets, and prepares the IR for emission.
+ */
 void cfg_flatten(void)
 {
     func_t *func;
@@ -255,6 +271,10 @@ void emit(int code)
     elf_write_int(elf_code, code);
 }
 
+/* Emit ARM machine code for a single IR instruction.
+ * Translates abstract operations (e.g., OP_add) into specific ARM instructions
+ * (e.g., __add_r).
+ */
 void emit_ph2_ir(ph2_ir_t *ph2_ir)
 {
     func_t *func;
@@ -605,6 +625,11 @@ void emit_ph2_ir(ph2_ir_t *ph2_ir)
 }
 
 void plt_generate(void);
+
+/* Main code generation loop.
+ * Initializes the environment (stack, global pointer), emits the code,
+ * and handles the main function entry/exit.
+ */
 void code_generate(void)
 {
     int ofs;

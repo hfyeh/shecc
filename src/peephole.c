@@ -13,6 +13,12 @@
 /* Determines if an instruction can be fused with a following OP_assign.
  * Fusible instructions are those whose results can be directly written
  * to the final destination register, eliminating intermediate moves.
+ *
+ * Example:
+ *   add r1, r2, r3
+ *   mov r4, r1
+ *   ->
+ *   add r4, r2, r3
  */
 bool is_fusible_insn(ph2_ir_t *ph2_ir)
 {
@@ -44,6 +50,9 @@ bool is_fusible_insn(ph2_ir_t *ph2_ir)
 /* Main peephole optimization function that applies pattern matching
  * and transformation rules to consecutive IR instructions.
  * Returns true if any optimization was applied, false otherwise.
+ *
+ * This function attempts to fuse consecutive instructions or simplify
+ * instruction sequences based on algebraic identities.
  */
 bool insn_fusion(ph2_ir_t *ph2_ir)
 {

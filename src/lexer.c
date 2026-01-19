@@ -28,6 +28,10 @@ hashmap_t *KEYWORD_MAP = NULL;
 token_t *directive_tokens_storage = NULL;
 token_t *keyword_tokens_storage = NULL;
 
+/* Initialize the hash map for preprocessor directives.
+ * This optimizes directive lookup performance.
+ */
+
 void lex_init_directives()
 {
     if (DIRECTIVE_MAP)
@@ -57,6 +61,9 @@ void lex_init_directives()
     }
 }
 
+/* Initialize the hash map for C keywords.
+ * This optimizes keyword lookup performance.
+ */
 void lex_init_keywords()
 {
     if (KEYWORD_MAP)
@@ -97,7 +104,9 @@ void lex_init_keywords()
     }
 }
 
-/* Hash table lookup for preprocessor directives */
+/* Hash table lookup for preprocessor directives
+ * Returns the token type if found, or T_identifier if not.
+ */
 token_t lookup_directive(char *token)
 {
     if (!DIRECTIVE_MAP)
@@ -110,7 +119,9 @@ token_t lookup_directive(char *token)
     return T_identifier;
 }
 
-/* Hash table lookup for C keywords */
+/* Hash table lookup for C keywords
+ * Returns the token type if found, or T_identifier if not.
+ */
 token_t lookup_keyword(char *token)
 {
     if (!KEYWORD_MAP)
@@ -124,7 +135,9 @@ token_t lookup_keyword(char *token)
 }
 
 
-/* Cleanup function for lexer hashmaps */
+/* Cleanup function for lexer hashmaps.
+ * Frees memory allocated for directive and keyword maps.
+ */
 void lexer_cleanup()
 {
     if (DIRECTIVE_MAP) {
@@ -239,8 +252,18 @@ char peek_char(int offset)
     return SOURCE->elements[SOURCE->size + offset];
 }
 
-/* Lex next token and returns its token type. Parameter 'aliasing' controls
- * preprocessor aliasing on identifier tokens (true = enable, false = disable).
+/* Core Lexer Function
+ * Scans the source code character by character to identify tokens.
+ * Handles:
+ * - Preprocessor directives (starting with #)
+ * - Comments (C-style / * ... * / and C++-style //)
+ * - Numeric literals (decimal, hex, octal, binary)
+ * - String and character literals (including escape sequences)
+ * - Operators and punctuation
+ * - Identifiers and keywords
+ *
+ * @aliasing: If true, checks for macro aliases.
+ * Return: The type of the identified token.
  */
 token_t lex_token_impl(bool aliasing)
 {

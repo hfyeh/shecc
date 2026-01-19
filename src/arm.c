@@ -121,6 +121,14 @@ int arm_extract_bits(int imm, int i_start, int i_end, int d_start, int d_end)
     return v;
 }
 
+/* Encode an ARM instruction.
+ *
+ * @cond: Condition code (4 bits)
+ * @opcode: Opcode (8 bits)
+ * @rn: First source register (4 bits)
+ * @rd: Destination register (4 bits)
+ * @op2: Operand 2 (12 bits)
+ */
 int arm_encode(arm_cond_t cond, int opcode, int rn, int rd, int op2)
 {
     return (cond << 28) + (opcode << 20) + (rn << 16) + (rd << 12) + op2;

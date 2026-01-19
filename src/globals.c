@@ -150,6 +150,8 @@ void arena_block_free(arena_block_t *block)
 }
 
 /* Initialize the given arena with initial capacity.
+ * Arenas are used for efficient memory management, grouping allocations
+ * with similar lifecycles.
  * @initial_capacity: The initial capacity of the arena. Must be positive.
  *
  * Return: The pointer of initialized arena.
@@ -170,6 +172,7 @@ arena_t *arena_init(int initial_capacity)
 
 /* Allocate memory from the given arena with given size.
  * The arena may create a new arena block if no space is available.
+ * This is a bump-pointer allocator, which is very fast but doesn't support freeing individual allocations.
  * @arena: The arena to allocate memory from. Must not be NULL.
  * @size: The size of memory to allocate. Must be positive.
  *
