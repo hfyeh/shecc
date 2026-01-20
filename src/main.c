@@ -46,12 +46,22 @@
 /* inlined libc */
 #include "../out/libc.inc"
 
+/* Main Compiler Driver
+ * This function orchestrates the entire compilation process:
+ * 1. Parses command-line arguments.
+ * 2. Initializes the compiler state.
+ * 3. Parses the source code into the initial IR.
+ * 4. Runs optimization passes (SSA, SCCP, etc.).
+ * 5. Performs register allocation.
+ * 6. Generates machine code and ELF binaries.
+ */
 int main(int argc, char *argv[])
 {
     bool libc = true;
     char *out = NULL;
     char *in = NULL;
 
+    /* Parse command-line arguments */
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--dump-ir"))
             dump_ir = true;

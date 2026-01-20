@@ -21,6 +21,10 @@
 /* Dead store elimination window size */
 #define OVERWRITE_WINDOW 3
 
+/* Ensure the variable list has enough capacity.
+ * This is a dynamic array resizing utility.
+ */
+
 void var_list_ensure_capacity(var_list_t *list, int min_capacity)
 {
     if (list->capacity >= min_capacity)
@@ -58,7 +62,10 @@ void var_list_assign_array(var_list_t *list, var_t **data, int count)
     list->size = count;
 }
 
-/* cfront does not accept structure as an argument, pass pointer */
+/* Forward traversal of the CFG (Control Flow Graph).
+ * Visits basic blocks in depth-first order.
+ * cfront does not accept structure as an argument, pass pointer
+ */
 void bb_forward_traversal(bb_traversal_args_t *args)
 {
     args->bb->visited++;
@@ -187,10 +194,13 @@ basic_block_t *intersect(basic_block_t *i, basic_block_t *j)
 
 /* Find the immediate dominator of each basic block to build the dominator tree.
  *
- * Once the dominator tree is built, we can perform the more advanced
- * optimiaztion according to the liveness analysis and the reachability
- * analysis, e.g. common subexpression elimination, loop optimiaztion or dead
- * code elimination .
+ * The dominator tree is crucial for SSA construction. A block A dominates
+ * block B if every path from the entry node to B goes through A.
+ * The immediate dominator (idom) of B is the unique dominator of B that
+ * does not strictly dominate any other dominator of B.
+ *
+ * Once the dominator tree is built, we can perform advanced optimizations
+ * like CSE, loop optimization, and DCE.
  *
  * Reference:
  *   Cooper, Keith D.; Harvey, Timothy J.; Kennedy, Ken (2001).
@@ -309,6 +319,11 @@ void bb_build_df(func_t *func, basic_block_t *bb)
     }
 }
 
+/* Build the Dominance Frontier (DF) for each basic block.
+ * The dominance frontier of a block X is the set of blocks Y such that
+ * X dominates a predecessor of Y, but does not strictly dominate Y.
+ * This is where Phi functions need to be inserted.
+ */
 void build_df(void)
 {
     bb_traversal_args_t *args = arena_alloc_traversal_args();
@@ -668,6 +683,11 @@ bool insert_phi_insn(basic_block_t *bb, var_t *var)
     return true;
 }
 
+/* Insert Phi functions into the CFG.
+ * This function iterates over all variables and inserts Phi nodes at the
+ * dominance frontier of blocks where the variable is defined.
+ * It uses the semi-pruned SSA form construction.
+ */
 void solve_phi_insertion(void)
 {
     for (func_t *func = FUNC_LIST.head; func; func = func->next) {
@@ -778,6 +798,10 @@ var_t *get_stack_top_subscript_var(var_t *var)
     return NULL; /* unreachable, but silences compiler warning */
 }
 
+/* Rename variable uses to the current SSA version.
+ * This function updates a variable reference to point to the current
+ * definition on the renaming stack.
+ */
 void rename_var(var_t **var)
 {
     var_t *v = *var;
@@ -1384,6 +1408,13 @@ void dump_dom(char name[])
 }
 #endif
 
+/* Main SSA Construction Function
+ * Coordinates the steps to convert the IR to Static Single Assignment form:
+ * 1. Build dominator tree and dominance frontiers.
+ * 2. Identify global variables (used across blocks).
+ * 3. Insert Phi nodes.
+ * 4. Rename variables to establish SSA properties.
+ */
 void ssa_build(void)
 {
     build_rpo();
@@ -1437,8 +1468,10 @@ bool is_cse_candidate(insn_t *insn)
     }
 }
 
-/* Common Subexpression Elimination (CSE) */
-/* Enhanced to support general binary operations */
+/* Common Subexpression Elimination (CSE)
+ * Identifies and eliminates redundant calculations.
+ * Supports array access patterns and general binary operations.
+ */
 bool cse(insn_t *insn, basic_block_t *bb)
 {
     /* Handle array access pattern: add + read */
@@ -1819,7 +1852,10 @@ int dce_init_mark(insn_t *insn, insn_t *work_list[], int work_list_idx)
     return mark_num;
 }
 
-/* Dead Code Elimination (DCE) */
+/* Dead Code Elimination (DCE)
+ * Identifies and removes instructions that do not affect the program's output.
+ * Uses a mark-and-sweep approach.
+ */
 void dce_insn(basic_block_t *bb)
 {
     insn_t *work_list[DCE_WORKLIST_SIZE];

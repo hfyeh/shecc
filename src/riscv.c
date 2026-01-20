@@ -7,7 +7,10 @@
 
 /* RISC-V instruction encoding */
 
-/* opcodes */
+/* opcodes
+ * RISC-V opcodes are constructed by combining the base opcode (7 bits),
+ * funct3 (3 bits), and funct7 (7 bits).
+ */
 typedef enum {
     /* R type */
     rv_add = 51 /* 0b110011 + (0 << 12) */,
@@ -122,11 +125,17 @@ int rv_lo(int val)
     return (val & 0xFFF) - ((val & (1 << 11)) << 1);
 }
 
+/* Encode R-type instruction.
+ * Format: funct7 | rs2 | rs1 | funct3 | rd | opcode
+ */
 int rv_encode_R(rv_op op, rv_reg rd, rv_reg rs1, rv_reg rs2)
 {
     return op + (rd << 7) + (rs1 << 15) + (rs2 << 20);
 }
 
+/* Encode I-type instruction.
+ * Format: imm[11:0] | rs1 | funct3 | rd | opcode
+ */
 int rv_encode_I(rv_op op, rv_reg rd, rv_reg rs1, int imm)
 {
     if (imm > 2047 || imm < -2048)

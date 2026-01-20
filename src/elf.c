@@ -5,7 +5,19 @@
  * file "LICENSE" for information on usage and redistribution of this file.
  */
 
-/* ELF file manipulation */
+/* ELF file manipulation
+ *
+ * This file handles the generation of the ELF (Executable and Linkable Format)
+ * binary. It creates headers, sections, and symbol tables required for a
+ * valid executable.
+ *
+ * Key components:
+ * - ELF Header
+ * - Program Headers
+ * - Section Headers
+ * - Sections (.text, .data, .rodata, .bss, etc.)
+ * - Symbol Table and String Table
+ */
 
 #include "../config"
 #include "defs.h"
@@ -58,6 +70,10 @@ void elf_write_blk(strbuf_t *elf_array, void *blk, int sz)
         strbuf_putc(elf_array, ptr[i]);
 }
 
+/* Generate the ELF file header.
+ * This header contains metadata about the ELF file, such as the target
+ * machine, entry point address, and offsets to other headers.
+ */
 void elf_generate_header(void)
 {
     /* Check for null pointers to prevent crashes */
@@ -185,6 +201,10 @@ void elf_generate_header(void)
     elf_write_blk(elf_header, &hdr, sizeof(elf32_hdr_t));
 }
 
+/* Generate program headers (segments).
+ * These headers describe how the operating system should load the file
+ * into memory.
+ */
 void elf_generate_program_headers(void)
 {
     if (!elf_program_header || !elf_code || !elf_data || !elf_rodata ||
@@ -306,6 +326,10 @@ void elf_generate_program_headers(void)
     }
 }
 
+/* Generate section headers.
+ * These headers describe the various sections in the ELF file, such as
+ * code, data, symbols, etc.
+ */
 void elf_generate_section_headers(void)
 {
     /* Check for null pointers to prevent crashes */

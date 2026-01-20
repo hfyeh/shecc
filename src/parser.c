@@ -13,10 +13,24 @@
 #include "defs.h"
 #include "globals.c"
 
-/* C language syntactic analyzer */
+/* C language syntactic analyzer
+ *
+ * This file implements a recursive descent parser that constructs the initial
+ * Intermediate Representation (IR) from the token stream.
+ *
+ * Key features:
+ * - Single-pass parsing and IR generation.
+ * - Handles C control flow (if, while, for, switch, goto).
+ * - Manages variable declarations and scoping.
+ * - Evaluates constant expressions.
+ * - Handles type checking and promotion.
+ */
 int global_var_idx = 0;
 
-/* Side effect instructions cache */
+/* Side effect instructions cache
+ * Used to defer the generation of side-effect instructions (like post-increment)
+ * until after the main expression has been evaluated.
+ */
 insn_t side_effect[10];
 int se_idx = 0;
 
@@ -46,6 +60,7 @@ void parse_array_init(var_t *var,
                       basic_block_t **bb,
                       bool emit_code);
 
+/* Find a label by name in the current function scope. */
 label_t *find_label(char *name)
 {
     for (int i = 0; i < label_idx; i++) {
@@ -65,12 +80,14 @@ void add_label(char *name, basic_block_t *bb)
     l->bb = bb;
 }
 
+/* Generate a unique temporary variable name. */
 char *gen_name_to(char *buf)
 {
     sprintf(buf, ".t%d", global_var_idx++);
     return buf;
 }
 
+/* Allocate a new variable in the given block scope. */
 var_t *require_var(block_t *blk)
 {
     var_list_t *var_list = &blk->locals;
@@ -222,6 +239,7 @@ int get_unary_operator_prio(opcode_t op)
     }
 }
 
+/* Parse and return the next operator token, or OP_generic if none found. */
 opcode_t get_operator(void)
 {
     opcode_t op = OP_generic;
@@ -266,6 +284,7 @@ opcode_t get_operator(void)
     return op;
 }
 
+/* Promote a variable to a larger type (e.g., char to int) without checking constraints. */
 var_t *promote_unchecked(block_t *block,
                          basic_block_t **bb,
                          var_t *var,
@@ -289,6 +308,7 @@ var_t *promote_unchecked(block_t *block,
     return rd;
 }
 
+/* Promote a variable if necessary (e.g., standard integer promotions). */
 var_t *promote(block_t *block,
                basic_block_t **bb,
                var_t *var,
@@ -321,6 +341,7 @@ var_t *truncate_unchecked(block_t *block,
     return rd;
 }
 
+/* Resize a variable (promote or truncate) to match the target type. */
 var_t *resize_var(block_t *block, basic_block_t **bb, var_t *from, var_t *to)
 {
     bool is_from_ptr = from->ptr_level || from->array_size,
@@ -2806,6 +2827,9 @@ bool is_pointer_var(var_t *v, block_t *parent)
     return false;
 }
 
+/* Parse an expression and generate IR.
+ * Handles operator precedence using the Shunting-yard algorithm concept.
+ */
 void read_expr(block_t *parent, basic_block_t **bb)
 {
     var_t *vd, *rs1, *rs2;
@@ -3101,11 +3125,11 @@ void read_expr(block_t *parent, basic_block_t **bb)
     }
 }
 
-/* Return the address that an expression points to, or evaluate its value.
- *   x =;
- *   x[<expr>] =;
- *   x[expr].field =;
- *   x[expr]->field =;
+/* Parse an lvalue (left-hand side value).
+ * Handles array indexing, pointer dereferencing, and struct member access.
+ *
+ * @eval: If true, load the value from the address.
+ * @prefix_op: Operator to apply if this is a pre-increment/decrement.
  */
 void read_lvalue(lvalue_t *lvalue,
                  var_t *var,
@@ -5758,7 +5782,9 @@ void parse_internal(void)
     } while (!lex_accept(T_eof));
 }
 
-/* Load specified source file and referred inclusion recursively */
+/* Load specified source file and referred inclusion recursively.
+ * Handles #include directives by recursively loading files.
+ */
 void load_source_file(char *file)
 {
     char buffer[MAX_LINE_LEN];
@@ -5797,6 +5823,7 @@ void load_source_file(char *file)
     fclose(f);
 }
 
+/* Main entry point for the parser. */
 void parse(char *file)
 {
     load_source_file(file);

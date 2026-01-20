@@ -14,7 +14,10 @@
  * - Dead code elimination through unreachable branch removal
  */
 
-/* Simple constant propagation within basic blocks */
+/* Simple constant propagation within basic blocks.
+ * This function iterates over all instructions in a function and attempts to
+ * replace variables with known constant values.
+ */
 bool simple_sccp(func_t *func)
 {
     if (!func || !func->bbs)
@@ -198,7 +201,10 @@ bool simple_sccp(func_t *func)
     return changed;
 }
 
-/* Targeted constant truncation peephole optimization */
+/* Targeted constant truncation peephole optimization.
+ * Removes redundant truncation instructions when the source is already a constant
+ * that fits within the target size.
+ */
 bool optimize_constant_casts(func_t *func)
 {
     if (!func || !func->bbs)
